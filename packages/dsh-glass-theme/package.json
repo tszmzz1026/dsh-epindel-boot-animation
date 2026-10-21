@@ -1,0 +1,39 @@
+{
+    "name": "dsh-glass-theme",
+    "version": "1.0.0",
+    "description": "原创金紫液态玻璃主题：纯 CSS 渐变、金色输入、代码配色、助手标记和卡片主页，不包含游戏素材。",
+    "type": "module",
+    "main": "src/host.js",
+    "exports": {
+        ".": "./src/host.js",
+        "./client": "./lib/client.js",
+        "./cordis.patch.yml": "./cordis.patch.yml",
+        "./package.json": "./package.json"
+    },
+    "files": [
+        "src",
+        "lib",
+        "cordis.patch.yml",
+        "README.md",
+        "LICENSE"
+    ],
+    "engines": {
+        "node": ">=22.19"
+    },
+    "dsh": {
+        "bundle": {
+            "patch": "./cordis.patch.yml"
+        },
+        "client": {
+            "platform": "web",
+            "inject": [
+                "@deepseek-ai/dsh-client-ui-theme"
+            ]
+        }
+    },
+    "scripts": {
+        "build": "node scripts/build.mjs",
+        "test": "node tests/avatar-browser.mjs"
+    },
+    "license": "MIT"
+}

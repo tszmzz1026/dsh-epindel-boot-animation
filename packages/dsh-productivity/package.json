@@ -1,0 +1,21 @@
+{
+    "name": "dsh-productivity",
+    "version": "1.3.1",
+    "description": "主聊旁聊、Muse 风格长期记忆、目标待办、每日计划复盘，以及搜索、检查点与上下文管理。",
+    "type": "module",
+    "license": "MIT",
+    "main": "src/host.js",
+    "exports": {
+        ".": "./src/host.js",
+        "./client": "./lib/client.js",
+        "./cordis.patch.yml": "./cordis.patch.yml",
+        "./package.json": "./package.json"
+    },
+    "files": ["src", "lib", "cordis.patch.yml", "README.md", "LICENSE"],
+    "engines": { "node": ">=22.19" },
+    "dsh": {
+        "bundle": { "patch": "./cordis.patch.yml" },
+        "client": { "platform": "web", "inject": ["@deepseek-ai/dsh-client-ui-slots", "@deepseek-ai/dsh-client-ui-workspace", "@deepseek-ai/dsh-client-ui-session"] }
+    },
+    "scripts": { "build": "node scripts/build.mjs", "test": "node --test tests/checkpoints.mjs tests/context.mjs tests/host.mjs tests/assistant.mjs", "test:browser": "node tests/assistant-browser.mjs" }
+}

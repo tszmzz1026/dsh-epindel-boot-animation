@@ -1,0 +1,52 @@
+{
+    "version": "2.0.0",
+    "compatibility": {
+        "kernel": "0.2.0-rc.2",
+        "desktop": "0.12.0"
+    },
+    "packages": {
+        "dsh-glass-theme": "1.0.0",
+        "dsh-productivity": "1.3.1"
+    },
+    "files": {
+        "packages/dsh-glass-theme/cordis.patch.yml": "1dc5ea05677afebb216e3fedb9e4e5dc63acaa84c68fc50d6a64f926a1dab64d",
+        "packages/dsh-glass-theme/lib/client.js": "532620bd7be9a5f13078f3406c7a36503fd1762c5450aeeaa919a169ab385392",
+        "packages/dsh-glass-theme/LICENSE": "d9e0f2558ac310ab92402cd4de313196368368f364dc8ec654eca07d8e108bd4",
+        "packages/dsh-glass-theme/package.json": "faacc6fd86b380c8d4a19d95c7d95bc12f1c4fb8a4b53f49dfb9870424367fe8",
+        "packages/dsh-glass-theme/README.md": "91e3f74c253f8b9c985a482390841847f52d7c27387f7a987196faf6ac09b9f1",
+        "packages/dsh-glass-theme/src/avatar.js": "8a132c935a864854b77765fa190ff58809c393d961a68ef4d2afe26d0b215411",
+        "packages/dsh-glass-theme/src/client.js": "fc98bd88c98ff9240f54ae67e73b42011bb01749b66e185ec70752989932a537",
+        "packages/dsh-glass-theme/src/enhancements.js": "22eee7d92d94d26584f04dd278dc2cd3dd06bc797b5db19cf5cc2dfdd473ee79",
+        "packages/dsh-glass-theme/src/host.js": "3e84636989d67a32065c2572ec9c302743efa6bfc326319d8c9ebc8dd8c53251",
+        "packages/dsh-glass-theme/src/theme.css": "0bdab14de06984497260810af4be04f9976020161627eeaf55cc02512424f2de",
+        "packages/dsh-productivity/cordis.patch.yml": "d6be50675bdec6b22316e83590f4eda5ca0930bd8bde69bf7f138c861b16c2a6",
+        "packages/dsh-productivity/lib/client.js": "2baa702462200fe8d9c00b30260a474f66479f32308d32209c28394463653bd1",
+        "packages/dsh-productivity/LICENSE": "d9e0f2558ac310ab92402cd4de313196368368f364dc8ec654eca07d8e108bd4",
+        "packages/dsh-productivity/package.json": "7b584a6edc4abce408a3cc483ec05061dc7332fc9d469164862816b1f9dc3966",
+        "packages/dsh-productivity/README.md": "a6a4556ac94be0c9cc8cb365d15a57a7f27dc9b5f5e1e9ee930cf8bca27c57a5",
+        "packages/dsh-productivity/src/assistant-client.js": "c230a0607e596e06d07dfddd16ee281f67eea738c45a6d943d291fb5ba955f96",
+        "packages/dsh-productivity/src/assistant.js": "ed4c2c321121daca26df97d4ec140b03be81ed9951f39f4c00c1a7915034a00f",
+        "packages/dsh-productivity/src/checkpoints.js": "38b123377461f6f65c4b004bd808c606cab9c4c0e48639a81558bbf5e76c8db1",
+        "packages/dsh-productivity/src/cleanup.js": "9648c91cddc3667cdc53e8c7d59aaa1502162e941339deae1d3dfa9affecb722",
+        "packages/dsh-productivity/src/client.js": "78e663dc869081f73ea72767647792eaebb8188ce54c0586b10a06aff3fe1bdf",
+        "packages/dsh-productivity/src/context.js": "e42b5006bcbb3039d04d30de38e2ed607ff37dc4a1d77955fbbe9bc5faccd1f9",
+        "packages/dsh-productivity/src/host.js": "8d93fdc95769359955f5d293f75d0a6bddb18632687f23241cc89046631402ad",
+        "packages/dsh-productivity/src/storage.js": "10b10ee139974b7b22c9e530e7de7b59c29c99b9da6e109f895f3086b6d8c8b3",
+        "packages/dsh-productivity/src/style.css": "c702b985fe1722381fa812219153512c003ebe34287828e5505d49620c874384",
+        "packages/dsh-productivity/src/summary.js": "a164718434d6719be66cf0068ebea70a5ea31c077d452b023c6f45316c051c0d",
+        "scripts/install-suite.mjs": "dc66a6f8a6606dda10850fac1b27f763c12d669575dc9a71fef447bffb0265d5",
+        "scripts/desktop-generations.mjs": "e8086793566051328e46b8d73f309e3948b8b3b6a1f4c505322cb1dea2340ff6",
+        "scripts/setup.mjs": "8fd2b972faa75f14adb9987925e6a64e4b8754e18f26bbe32c5cff06673ce7b3",
+        "scripts/bundles.mjs": "a0dc619f39db2c4736df2de8000a231aa7ccdebaeb995e5782817a7b1395b3a9",
+        "scripts/verify-suite.mjs": "642ea9e97210c6570e5d390f55f23e9d61387528710a1dfcb933821a6433bb3a",
+        "scripts/manage-suite.ps1": "a5123dc9d843ae5b4e296279105506119511dfa589359ef69f8fcaf50441a716",
+        "package.json": "59f5e5a7a1a2c387ff8b32d65884cf1efd5aa067f7edfae3daab9599e673ebe6",
+        "LICENSE": "d9e0f2558ac310ab92402cd4de313196368368f364dc8ec654eca07d8e108bd4",
+        "install-desktop.cmd": "f03fee4f06099cc3a6992b37e83f841b5181a48b6389039cce0970b6e84cbff4",
+        "uninstall-desktop.cmd": "ae834b65b14bf8ebea8f7ca162e42cc45fe2b5b5a7e2a8d9a3edcb5bad5f0e73",
+        "install-beauty.cmd": "771408f2d7b8fe0c5d395fc7beb2e02d9c0e0756177ff67a87657f0ea786da24",
+        "install-extensions.cmd": "c0497cbac2e76899af7fc994dfbf4d49140dfa1c3a8a86caeec77729a348a07e",
+        "uninstall-beauty.cmd": "359ee9bc64381d8ffa35333001656ae301931880b2d89102d92e0f5a9de68d46",
+        "uninstall-extensions.cmd": "2cceb9a5e5c22b66af4c9ea3e0d20d84185c5751bd0905d4f3c34b3c40762932"
+    }
+}
