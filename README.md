@@ -2,7 +2,7 @@
 
 [English](README.en.md) · [下载](https://github.com/tszmzz1026/dsh-epindel-boot-animation/releases/latest) · [插件市场源](marketplace/README.md)
 
-**纯代码界面美化 + 本地个人助理功能。当前版本不包含游戏图片、角色、模型、动画、语音或音乐。**
+**纯代码界面美化 + 本地个人助理功能。
 
 主题的背景、助手标记和装饰由 CSS 渐变与几何图形绘制；截图来自独立演示环境，仅包含示例数据。
 
