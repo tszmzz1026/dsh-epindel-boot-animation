@@ -129,8 +129,8 @@ export function verify_identity(root, name) {
     if (!existsSync(path)) throw new Error(`Missing package directory: packages/${name}`);
     const manifest = json(path);
     if (manifest.name !== name) throw new Error(`Package identity mismatch: expected ${name}, found ${manifest.name}.`);
-    const repository = String(manifest.repository?.url || "");
-    if (!repository.includes("tszmzz1026/dsh-epindel-boot-animation")) throw new Error(`${name} lost its original repository metadata; refusing to install an unverified package.`);
+    const repository = String(manifest.repository?.url || "").replace(/^git\+/, "").replace(/\.git$/, "");
+    if (repository !== "https://github.com/tszmzz1026/dsh-epindel-boot-animation" || manifest.repository?.directory !== `packages/${name}`) throw new Error(`${name} lost its original repository metadata; refusing to install an unverified package.`);
     return manifest;
 }
 
@@ -208,14 +208,6 @@ export async function install_suite(options = {}, dependencies = {}) {
     if (conflicts.length) {
         const list = conflicts.map(item => `${item.name}@${item.spec}`).join("、");
         if (!options.replace_conflict) throw new Error(`Detected a same-name plugin from another source: ${list}. Remove it with "dsh plugin remove <name>" first, or re-run with --replace-conflict.`);
-        if (!options.check) {
-            for (const item of conflicts) {
-                await execute(runtime, "remove", item.name);
-                const updated = json(manifest_path);
-                if (updated.dsh?.profile?.bundles) updated.dsh.profile.bundles = updated.dsh.profile.bundles.filter(name => name !== item.name);
-                atomic_write(manifest_path, `${JSON.stringify(updated, null, 2)}\n`);
-            }
-        }
     }
     if (options.check) return { changed: false, home: runtime.home, profile: runtime.profile, bundle: bundle.name, packages, message: "Runtime, assets and profile checks passed. No profile files were changed." };
     const stamp = `${new Date().toISOString().replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
@@ -225,6 +217,7 @@ export async function install_suite(options = {}, dependencies = {}) {
         const path = join(runtime.profile_path, name);
         if (existsSync(path)) copy_tree(path, join(backup, name));
     }
+    if (existsSync(state_path)) copy_tree(state_path, join(backup, "install-state.json"));
     const next = state && !state.uninstalled ? state : {
         previous: {},
         installed: {},
@@ -237,6 +230,12 @@ export async function install_suite(options = {}, dependencies = {}) {
     next.stage = stage;
     next.uninstalled = false;
     atomic_write(state_path, JSON.stringify(next, null, 4));
+    for (const item of conflicts) {
+        await execute(runtime, "remove", item.name);
+        const updated = json(manifest_path);
+        if (updated.dsh?.profile?.bundles) updated.dsh.profile.bundles = updated.dsh.profile.bundles.filter(name => name !== item.name);
+        atomic_write(manifest_path, `${JSON.stringify(updated, null, 2)}\n`);
+    }
     for (const name of packages) {
         const path = package_sources(stage)[name];
         const spec = `link:${path.replaceAll("\\", "/")}`;

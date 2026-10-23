@@ -1,4 +1,5 @@
-import { createReadStream, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { open } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -19,7 +20,8 @@ function data_root() {
     return join(process.env.DSH_HOME || join(homedir(), ".dsh"), "plugin-data", "dsh-glass-aurum");
 }
 
-const media_path = () => join(data_root(), "wallpaper.bin");
+const mutations = new Set();
+const media_path = meta => join(data_root(), meta?.file || "wallpaper.bin");
 const meta_path = () => join(data_root(), "wallpaper.json");
 
 function read_meta() {
@@ -27,6 +29,7 @@ function read_meta() {
         const value = JSON.parse(readFileSync(meta_path(), "utf8"));
         if (!value || typeof value !== "object" || !TYPES.has(value.type)) return null;
         return {
+            file: typeof value.file === "string" && /^wallpaper-[a-f0-9-]{36}\.bin$/.test(value.file) ? value.file : null,
             name: typeof value.name === "string" ? value.name.slice(0, 160) : "",
             type: value.type,
             updated: Number.isFinite(value.updated) ? value.updated : 0,
@@ -39,14 +42,21 @@ function read_meta() {
 function write_meta(meta) {
     mkdirSync(data_root(), { recursive: true });
     const temporary = `${meta_path()}.${randomUUID()}.tmp`;
-    writeFileSync(temporary, JSON.stringify(meta, null, 2));
-    renameSync(temporary, meta_path());
+    try {
+        writeFileSync(temporary, JSON.stringify(meta, null, 2), { mode: 0o600 });
+        renameSync(temporary, meta_path());
+    }
+    finally { rmSync(temporary, { force: true }); }
+}
+
+function remove_media(path) {
+    try { rmSync(path, { force: true }); } catch { /* an active reader may still own the file */ }
 }
 
 function clear_wallpaper() {
-    for (const path of [media_path(), meta_path()]) {
-        try { rmSync(path, { force: true }); } catch { /* already gone */ }
-    }
+    const meta = read_meta();
+    rmSync(meta_path(), { force: true });
+    remove_media(media_path(meta));
 }
 
 function send_json(res, status, body) {
@@ -66,34 +76,47 @@ function same_origin(req) {
 }
 
 function descriptor(meta) {
-    const exists = Boolean(meta) && existsSync(media_path());
+    const exists = Boolean(meta) && existsSync(media_path(meta));
     if (!exists) return { exists: false };
-    return { exists: true, name: meta.name, type: meta.type, size: statSync(media_path()).size, updated: meta.updated };
+    return { exists: true, name: meta.name, type: meta.type, size: statSync(media_path(meta)).size, updated: meta.updated };
 }
 
 function stream_media(req, res, meta) {
-    const size = statSync(media_path()).size;
-    const range = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range || "").trim());
+    const size = statSync(media_path(meta)).size;
+    const raw_range = String(req.headers.range || "").trim();
+    const range = /^bytes=(\d*)-(\d*)$/.exec(raw_range);
     const headers = {
         "Content-Type": meta.type,
         "Cache-Control": "no-store",
         "Accept-Ranges": "bytes",
         "X-Content-Type-Options": "nosniff",
     };
-    if (range && (range[1] || range[2])) {
-        const start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2]));
-        const end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
-        if (!Number.isFinite(start) || !Number.isFinite(end) || start > end || start >= size) {
-            res.writeHead(416, { "Content-Range": `bytes */${size}` });
+    let start = 0;
+    let end = size - 1;
+    if (raw_range) {
+        const first = range?.[1] ? Number(range[1]) : null;
+        const last = range?.[2] ? Number(range[2]) : null;
+        const safe = number => number === null || Number.isSafeInteger(number);
+        if (range && (range[1] || range[2]) && safe(first) && safe(last)) {
+            start = first === null ? Math.max(0, size - last) : first;
+            end = first !== null && last !== null ? Math.min(last, size - 1) : size - 1;
+        } else start = size;
+        if (start > end || start >= size) {
+            res.writeHead(416, { ...headers, "Content-Range": `bytes */${size}` });
             res.end();
             return;
         }
-        res.writeHead(206, { ...headers, "Content-Range": `bytes ${start}-${end}/${size}`, "Content-Length": end - start + 1 });
-        createReadStream(media_path(), { start, end }).pipe(res);
-        return;
     }
-    res.writeHead(200, { ...headers, "Content-Length": size });
-    createReadStream(media_path()).pipe(res);
+    const fd = openSync(media_path(meta), "r");
+    const stream = createReadStream(media_path(meta), { fd, start, end });
+    stream.on("error", () => res.destroy());
+    res.once("close", () => stream.destroy());
+    res.writeHead(raw_range ? 206 : 200, {
+        ...headers,
+        ...(raw_range ? { "Content-Range": `bytes ${start}-${end}/${size}` } : {}),
+        "Content-Length": end - start + 1,
+    });
+    stream.pipe(res);
 }
 
 async function receive_media(req, res) {
@@ -111,25 +134,56 @@ async function receive_media(req, res) {
     try { name = decodeURIComponent(String(req.headers["x-glass-name"] || "")).slice(0, 160); } catch { name = ""; }
     mkdirSync(data_root(), { recursive: true });
     const temporary = `${media_path()}.${randomUUID()}.part`;
-    const chunks = [];
+    const previous = read_meta();
+    const meta = { file: `wallpaper-${randomUUID()}.bin`, name, type, updated: Date.now() };
+    const destination = media_path(meta);
     let bytes = 0;
+    let handle;
+    let committed = false;
     try {
+        handle = await open(temporary, "wx", 0o600);
         for await (const chunk of req) {
             bytes += chunk.length;
             if (bytes > MAX_BYTES) throw Object.assign(new Error("too-large"), { code: "too-large" });
-            chunks.push(chunk);
+            await handle.writeFile(chunk);
         }
         if (!bytes) throw Object.assign(new Error("empty"), { code: "empty" });
-        writeFileSync(temporary, Buffer.concat(chunks));
-        renameSync(temporary, media_path());
+        await handle.sync();
+        await handle.close();
+        handle = null;
+        renameSync(temporary, destination);
+        write_meta(meta);
+        committed = true;
+        remove_media(media_path(previous));
+        send_json(res, 200, { ok: true, ...descriptor(meta) });
     } catch (error) {
-        try { rmSync(temporary, { force: true }); } catch { /* nothing staged */ }
-        send_json(res, error.code === "too-large" ? 413 : 400, { ok: false, error: error.code || "write-failed" });
+        const code = ["too-large", "empty", "ECONNRESET", "ABORT_ERR"].includes(error.code) ? error.code : "write-failed";
+        send_json(res, code === "too-large" ? 413 : code === "write-failed" ? 500 : 400, { ok: false, error: code });
+    } finally {
+        if (handle) await handle.close();
+        remove_media(temporary);
+        if (!committed) remove_media(destination);
+    }
+}
+
+async function mutate(req, res) {
+    const root = data_root();
+    if (mutations.has(root)) {
+        send_json(res, 409, { ok: false, error: "busy" });
         return;
     }
-    const meta = { name, type, updated: Date.now() };
-    write_meta(meta);
-    send_json(res, 200, { ok: true, ...descriptor(meta) });
+    mutations.add(root);
+    try {
+        if (req.method === "POST") await receive_media(req, res);
+        else {
+            clear_wallpaper();
+            send_json(res, 200, { ok: true, exists: false });
+        }
+    } catch {
+        if (!res.headersSent) send_json(res, 500, { ok: false, error: "write-failed" });
+    } finally {
+        mutations.delete(root);
+    }
 }
 
 export function route(req, res) {
@@ -144,21 +198,14 @@ export function route(req, res) {
             send_json(res, 200, descriptor(meta));
             return;
         }
-        if (!meta || !existsSync(media_path())) {
+        if (!meta || !existsSync(media_path(meta))) {
             send_json(res, 404, { exists: false });
             return;
         }
         stream_media(req, res, meta);
         return;
     }
-    if (req.method === "POST") {
-        return receive_media(req, res);
-    }
-    if (req.method === "DELETE") {
-        clear_wallpaper();
-        send_json(res, 200, { ok: true, exists: false });
-        return;
-    }
+    if (req.method === "POST" || req.method === "DELETE") return mutate(req, res);
     send_json(res, 405, { ok: false, error: "method-not-allowed" });
 }
 

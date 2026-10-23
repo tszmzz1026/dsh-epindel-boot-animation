@@ -6,7 +6,16 @@ An original CSS glass theme and a productivity center for DeepSeek Harness. **No
 
 ![Code-only DSH demo](docs/overview.png)
 
-## What changed in 2.1.0
+## What changed in 2.1.1
+
+- Stream wallpaper uploads to disk with bounded buffering. Interrupted uploads preserve the last complete wallpaper; concurrent edits return a retry message.
+- Lock duplicate upload actions, keep the current wallpaper if clearing fails, and prevent a delayed startup restore from replacing a new upload.
+- Pause video in hidden windows and resume according to the saved playback setting; respect reduced motion.
+- Validate video ranges, retain legacy wallpaper compatibility, and back up profile metadata and installation records before removing conflicting plugins. Verify the exact source repository and package directory.
+
+Theme `1.1.1`; productivity remains `1.3.1`. The beauty, extensions and full ZIPs can still be installed separately.
+
+### Included 2.1.0 repairs
 
 | Change | Detail |
 | --- | --- |

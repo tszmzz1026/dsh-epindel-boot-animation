@@ -1,9 +1,50 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
-import { install_suite } from "../scripts/install-suite.mjs";
+import { install_suite, verify_identity } from "../scripts/install-suite.mjs";
+
+test("source identity rejects repository lookalikes", () => {
+    const scratch = mkdtempSync(join(tmpdir(), "dsh-identity-"));
+    const name = "dsh-glass-aurum";
+    const directory = join(scratch, "packages", name);
+    mkdirSync(directory, { recursive: true });
+    try {
+        for (const url of ["https://example.com/tszmzz1026/dsh-epindel-boot-animation", "git+https://github.com/tszmzz1026/dsh-epindel-boot-animation-fake.git"]) {
+            writeFileSync(join(directory, "package.json"), JSON.stringify({ name, repository: { url, directory: `packages/${name}` } }));
+            assert.throws(() => verify_identity(scratch, name), /repository|identity/i);
+        }
+    } finally {
+        rmSync(scratch, { recursive: true, force: true });
+    }
+});
+
+test("conflict replacement backs up original files before its first mutation", async () => {
+    const scratch = mkdtempSync(join(tmpdir(), "dsh-conflict-backup-"));
+    const profile_path = join(scratch, "profiles", "web");
+    mkdirSync(profile_path, { recursive: true });
+    const original = JSON.stringify({ dependencies: { "dsh-glass-aurum": "9.0.0" }, dsh: { profile: { bundles: ["dsh-glass-aurum"] } } });
+    writeFileSync(join(profile_path, "package.json"), original);
+    writeFileSync(join(profile_path, "cordis.patch.yml"), "[]\n");
+    try {
+        await assert.rejects(install_suite({ bundle: "beauty", replace_conflict: true }, {
+            runtime: { home: scratch, profile: "web", profile_path }, skip_verify: true,
+            execute: async (_, action) => {
+                assert.equal(action, "remove");
+                const backups = join(scratch, "extensions", "glass-suite", "backups");
+                assert.ok(existsSync(backups), "backup must precede plugin removal");
+                const entries = readdirSync(backups);
+                assert.equal(entries.length, 1);
+                assert.equal(readFileSync(join(backups, entries[0], "package.json"), "utf8"), original);
+                throw new Error("simulated CLI failure");
+            },
+        }), /simulated CLI failure/);
+        assert.equal(readFileSync(join(profile_path, "package.json"), "utf8"), original);
+    } finally {
+        rmSync(scratch, { recursive: true, force: true });
+    }
+});
 
 test("clean bundles install and uninstall independently with profile bytes preserved", async () => {
     const scratch = mkdtempSync(join(tmpdir(), "dsh-clean-suite-"));

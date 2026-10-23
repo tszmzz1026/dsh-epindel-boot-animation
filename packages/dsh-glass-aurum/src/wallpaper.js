@@ -13,6 +13,8 @@ function create_wallpaper(ambient) {
     let disposed = false;
     let revision = 0;
     let controls = null;
+    let busy = false;
+    const requests = new AbortController();
     let state = {
         opacity: 36,
         blur: 0,
@@ -48,8 +50,11 @@ function create_wallpaper(ambient) {
         if (volume_output) volume_output.textContent = `${state.volume}%`;
         video.hidden = !is_video();
         controls.toggle.textContent = state.playing ? "暂停" : "播放";
-        controls.toggle.disabled = !is_video();
-        controls.clear.disabled = !meta;
+        controls.toggle.disabled = busy || !is_video();
+        controls.clear.disabled = busy || !meta;
+        controls.upload.disabled = busy;
+        controls.file.disabled = busy;
+        controls.section.setAttribute("aria-busy", String(busy));
     }
 
     function apply() {
@@ -61,7 +66,7 @@ function create_wallpaper(ambient) {
         if (element.tagName === "VIDEO") {
             element.volume = Math.max(0, Math.min(1, state.volume / 100));
             element.muted = state.muted || state.volume === 0;
-            if (state.playing && !reduced_motion.matches) element.play().catch(() => {});
+            if (state.playing && !reduced_motion.matches && !document.hidden) element.play().catch(() => {});
             else element.pause();
         }
         sync_controls();
@@ -121,7 +126,7 @@ function create_wallpaper(ambient) {
     async function restore() {
         const current = ++revision;
         try {
-            const response = await fetch(`${ROUTE}?meta=1`, { cache: "no-store" });
+            const response = await fetch(`${ROUTE}?meta=1`, { cache: "no-store", signal: requests.signal });
             if (!response.ok) throw new Error(`http-${response.status}`);
             const payload = await response.json();
             if (disposed || current !== revision) return;
@@ -132,9 +137,12 @@ function create_wallpaper(ambient) {
     }
 
     async function upload(file) {
-        if (!file) return;
+        if (!file || disposed || busy) return;
         if (!/^(image|video)\//.test(file.type)) { set_status("请选择图片或视频文件。"); return; }
         if (file.size > MAX_BYTES) { set_status("文件超过 512 MB，请压缩后再导入。"); return; }
+        const current = ++revision;
+        busy = true;
+        sync_controls();
         set_status("正在导入…");
         try {
             const response = await fetch(ROUTE, {
@@ -145,24 +153,39 @@ function create_wallpaper(ambient) {
                     "x-glass-name": encodeURIComponent(file.name || "wallpaper"),
                 },
                 body: file,
+                signal: requests.signal,
             });
             const payload = await response.json().catch(() => null);
+            if (disposed || current !== revision) return;
             if (!response.ok || !payload?.ok) throw new Error(payload?.error || `http-${response.status}`);
             mount({ ...payload, exists: true });
             set_status("壁纸已保存到本机。");
         } catch (error) {
-            set_status(error?.message === "too-large" ? "文件超过 512 MB，请压缩后再导入。" : "导入失败，请确认 DSH 已重新启动后再试。");
+            if (!disposed && current === revision) set_status(error?.message === "too-large" ? "文件超过 512 MB，请压缩后再导入。" : error?.message === "busy" ? "另一个窗口正在导入壁纸，请稍后重试。" : "导入失败，请确认 DSH 已重新启动后再试。");
+        } finally {
+            busy = false;
+            if (!disposed) sync_controls();
         }
     }
 
     async function clear() {
+        if (disposed || busy) return;
+        const current = ++revision;
+        busy = true;
+        sync_controls();
         set_status("正在清除…");
         try {
-            await fetch(ROUTE, { method: "DELETE" });
+            const response = await fetch(ROUTE, { method: "DELETE", signal: requests.signal });
+            const payload = await response.json().catch(() => null);
+            if (disposed || current !== revision) return;
+            if (!response.ok || !payload?.ok || payload.exists !== false) throw new Error("clear-failed");
             mount(null);
             set_status("壁纸已清除，已恢复主题默认背景。");
         } catch {
-            set_status("清除失败，请稍后重试。");
+            if (!disposed && current === revision) set_status("清除失败，请稍后重试。");
+        } finally {
+            busy = false;
+            if (!disposed) sync_controls();
         }
     }
 
@@ -198,6 +221,9 @@ function create_wallpaper(ambient) {
             </div>`;
         const file_input = section.querySelector(".ep-wallpaper-file");
         controls = {
+            section,
+            file: file_input,
+            upload: section.querySelector("[data-wallpaper=upload]"),
             name: section.querySelector("[data-wallpaper-name]"),
             status: section.querySelector(".ep-wallpaper-status"),
             clear: section.querySelector("[data-wallpaper=clear]"),
@@ -251,6 +277,8 @@ function create_wallpaper(ambient) {
         return response.blob();
     }
 
+    document.addEventListener("visibilitychange", apply);
+    reduced_motion.addEventListener("change", apply);
     restore();
 
     return {
@@ -274,6 +302,9 @@ function create_wallpaper(ambient) {
         dispose() {
             disposed = true;
             revision++;
+            requests.abort();
+            document.removeEventListener("visibilitychange", apply);
+            reduced_motion.removeEventListener("change", apply);
             controls?.cleanup?.();
             release_element();
             layer.remove();

@@ -1,7 +1,7 @@
 {
     "name": "dsh-glass-aurum",
-    "version": "1.1.0",
-    "description": "原创金紫液态玻璃主题：纯 CSS 渐变、金色输入、代码配色、助手标记、卡片主页，支持导入图片/视频壁纸与按图片生成配色，不包含游戏素材。",
+    "version": "1.1.1",
+    "description": "原创金紫液态玻璃主题：纯 CSS 渐变、金色输入、代码配色、助手标记、卡片主页，支持导入本地图片/视频壁纸，不包含游戏素材。",
     "type": "module",
     "main": "src/host.js",
     "exports": {
@@ -22,8 +22,7 @@
         "deepseek-harness",
         "theme",
         "glassmorphism",
-        "wallpaper",
-        "image-palette"
+        "wallpaper"
     ],
     "repository": {
         "type": "git",

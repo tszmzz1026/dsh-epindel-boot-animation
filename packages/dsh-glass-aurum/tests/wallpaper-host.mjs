@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Writable } from "node:stream";
@@ -77,7 +77,7 @@ test("wallpaper upload, read, range and delete", async () => {
     assert.equal(payload.ok, true);
     assert.equal(payload.type, "image/png");
     assert.equal(payload.name, "示例 壁纸.png");
-    assert.ok(existsSync(join(home, "plugin-data", "dsh-glass-aurum", "wallpaper.bin")));
+    assert.ok(readdirSync(join(home, "plugin-data", "dsh-glass-aurum")).some(name => name.endsWith(".bin")));
 
     const meta = await call({ url: `${ROUTE}?meta=1` });
     assert.equal(JSON.parse(meta.body.toString("utf8")).exists, true);
@@ -113,4 +113,80 @@ test("wallpaper rejects unsupported types, oversized bodies and cross-origin wri
     assert.equal(foreign.status, 403);
     const meta = await call({ url: `${ROUTE}?meta=1` });
     assert.equal(JSON.parse(meta.body.toString("utf8")).exists, false);
+});
+
+test("failed and concurrent uploads preserve the last complete wallpaper", async () => {
+    await call({ method: "POST", headers: { "content-type": "image/png" }, body: png });
+    const broken = request({ method: "POST", headers: { "content-type": "video/mp4" } });
+    broken[Symbol.asyncIterator] = async function* () {
+        yield Buffer.from("partial video");
+        throw Object.assign(new Error("upload interrupted"), { code: "ECONNRESET" });
+    };
+    const rejected = response();
+    await route(broken, rejected);
+    assert.equal(rejected.result().status, 400);
+    assert.deepEqual((await call({})).body, png);
+    assert.equal(JSON.parse((await call({ url: `${ROUTE}?meta=1` })).body).type, "image/png");
+
+    let release;
+    let started;
+    const gate = new Promise(resolve => { release = resolve; });
+    const ready = new Promise(resolve => { started = resolve; });
+    const pending = request({ method: "POST", headers: { "content-type": "image/png" } });
+    pending[Symbol.asyncIterator] = async function* () { started(); await gate; yield png; };
+    const upload = route(pending, response());
+    await ready;
+    try {
+        assert.equal((await call({ method: "DELETE" })).status, 409);
+        assert.equal((await call({ method: "POST", headers: { "content-type": "image/png" }, body: png })).status, 409);
+        assert.deepEqual((await call({})).body, png);
+    } finally {
+        release();
+        await upload;
+    }
+    assert.equal(readdirSync(join(home, "plugin-data", "dsh-glass-aurum")).some(name => /\.(part|tmp)$/.test(name)), false);
+    await call({ method: "DELETE" });
+});
+
+test("video ranges handle suffix, open end, empty and unsafe ranges", async () => {
+    await call({ method: "POST", headers: { "content-type": "video/mp4" }, body: png });
+    assert.deepEqual((await call({ headers: { range: "bytes=-4" } })).body, png.subarray(-4));
+    assert.deepEqual((await call({ headers: { range: "bytes=8-" } })).body, png.subarray(8));
+    for (const range of ["bytes=-0", "bytes=1-0", "bytes=999-", "bytes=0-9007199254740992", "bytes=0-1,3-4"]) {
+        const result = await call({ headers: { range } });
+        assert.equal(result.status, 416, range);
+        assert.equal(result.headers["Content-Range"], `bytes */${png.length}`);
+    }
+    const oversized = await call({ method: "POST", headers: { "content-type": "image/png", "content-length": String(512 * 1024 * 1024 + 1) } });
+    assert.equal(oversized.status, 413);
+    await call({ method: "DELETE" });
+});
+
+test("upload writes each chunk to disk before requesting the next chunk", async () => {
+    const directory = join(home, "plugin-data", "dsh-glass-aurum");
+    const streaming = request({ method: "POST", headers: { "content-type": "image/png" } });
+    streaming[Symbol.asyncIterator] = async function* () {
+        yield png.subarray(0, 8);
+        const staged = readdirSync(directory).find(name => name.endsWith(".part"));
+        assert.ok(staged, "upload must stream into a staged file");
+        assert.equal(statSync(join(directory, staged)).size, 8);
+        yield png.subarray(8);
+    };
+    const res = response();
+    await route(streaming, res);
+    assert.equal(res.result().status, 200);
+    assert.deepEqual((await call({})).body, png);
+    await call({ method: "DELETE" });
+});
+
+test("legacy wallpaper files remain readable and migrate after replacement", async () => {
+    const directory = join(home, "plugin-data", "dsh-glass-aurum");
+    writeFileSync(join(directory, "wallpaper.bin"), png);
+    writeFileSync(join(directory, "wallpaper.json"), JSON.stringify({ name: "legacy.png", type: "image/png", updated: 1 }));
+    assert.deepEqual((await call({})).body, png);
+    const uploaded = await call({ method: "POST", headers: { "content-type": "image/png" }, body: png });
+    assert.equal(uploaded.status, 200);
+    assert.equal(existsSync(join(directory, "wallpaper.bin")), false);
+    assert.deepEqual((await call({})).body, png);
+    await call({ method: "DELETE" });
 });
