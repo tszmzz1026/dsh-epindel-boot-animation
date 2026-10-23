@@ -23,7 +23,7 @@
                     "source": {
                         "type": "git",
                         "url": "https://github.com/tszmzz1026/dsh-epindel-boot-animation",
-                        "commit": "ccc9c5c2417d5b449f56fc4448e7105da3fa451c",
+                        "commit": "5ae32bbd2d8c3bb4cde501ca247b4f8be1054ae2",
                         "path": "packages/dsh-glass-aurum"
                     }
                 }
@@ -47,7 +47,7 @@
                     "source": {
                         "type": "git",
                         "url": "https://github.com/tszmzz1026/dsh-epindel-boot-animation",
-                        "commit": "ccc9c5c2417d5b449f56fc4448e7105da3fa451c",
+                        "commit": "5ae32bbd2d8c3bb4cde501ca247b4f8be1054ae2",
                         "path": "packages/dsh-productivity"
                     }
                 }
