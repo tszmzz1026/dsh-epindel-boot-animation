@@ -12,6 +12,16 @@
         "./package.json": "./package.json"
     },
     "files": ["src", "lib", "cordis.patch.yml", "README.md", "LICENSE"],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/tszmzz1026/dsh-epindel-boot-animation.git",
+        "directory": "packages/dsh-productivity"
+    },
+    "author": "tszmzz1026",
+    "homepage": "https://github.com/tszmzz1026/dsh-epindel-boot-animation#readme",
+    "bugs": {
+        "url": "https://github.com/tszmzz1026/dsh-epindel-boot-animation/issues"
+    },
     "engines": { "node": ">=22.19" },
     "dsh": {
         "bundle": { "patch": "./cordis.patch.yml" },

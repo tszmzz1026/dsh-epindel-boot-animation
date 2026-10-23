@@ -29,7 +29,7 @@ test("clean bundles install and uninstall independently with profile bytes prese
         assert.equal(readFileSync(patch_path, "utf8"), original);
         assert.equal(existsSync(join(installed.stage, "assets")), false);
         await run({ bundle: "beauty" });
-        assert.deepEqual(Object.keys(manifest().dependencies).sort(), ["dsh-glass-theme", "dsh-productivity"]);
+        assert.deepEqual(Object.keys(manifest().dependencies).sort(), ["dsh-glass-aurum", "dsh-productivity"]);
         assert.ok(readFileSync(patch_path, "utf8").includes("preference: dark"));
         await run({ bundle: "beauty", uninstall: true });
         assert.equal(readFileSync(patch_path, "utf8"), original);

@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -15,6 +15,19 @@ const EMPTY_ARRAY = "# DSH GLASS SUITE EMPTY ARRAY PLACEHOLDER";
 const PATCH = `${BEGIN}\n- id: ui-theme\n  config:\n    preference: dark\n${END}\n`;
 
 function json(path) { return JSON.parse(readFileSync(path, "utf8").replace(/^\uFEFF/, "")); }
+
+// 逐层复制。部分 Windows 上的 Node 在递归 fs.cpSync 时会崩溃，这里改用显式遍历。
+export function copy_tree(source, destination) {
+    if (statSync(source).isDirectory()) {
+        mkdirSync(destination, { recursive: true });
+        for (const entry of readdirSync(source, { withFileTypes: true })) {
+            copy_tree(join(source, entry.name), join(destination, entry.name));
+        }
+        return;
+    }
+    mkdirSync(dirname(destination), { recursive: true });
+    copyFileSync(source, destination);
+}
 
 function atomic_write(path, value) {
     mkdirSync(dirname(path), { recursive: true });
@@ -49,7 +62,7 @@ export function parse_options(args) {
     const options = {};
     for (let index = 0; index < args.length; index++) {
         const key = args[index];
-        if (key === "--uninstall" || key === "--check") options[key.slice(2)] = true;
+        if (key === "--uninstall" || key === "--check" || key === "--replace-conflict") options[key.slice(2).replaceAll("-", "_")] = true;
         else if (["--bundle", "--home", "--profile", "--desktop-exe", "--dsh-command"].includes(key) && args[index + 1] && !args[index + 1].startsWith("--")) options[key.slice(2).replaceAll("-", "_")] = args[++index];
         else throw new Error(`Unknown or incomplete option: ${key}`);
     }
@@ -106,7 +119,26 @@ function execute_generation(runtime, action, argument, expected = "", restore = 
 }
 
 function package_sources(root) {
-    return Object.fromEntries(["dsh-glass-theme", "dsh-productivity"].map(name => [name, join(root, "packages", name)]));
+    return Object.fromEntries(["dsh-glass-aurum", "dsh-productivity"].map(name => [name, join(root, "packages", name)]));
+}
+
+// 包身份校验：同名但不同来源的包（例如市场里另一位作者的同名主题）必须被拦住，
+// 否则安装/升级会把本项目的插件替换成别人的代码。
+export function verify_identity(root, name) {
+    const path = join(root, "packages", name, "package.json");
+    if (!existsSync(path)) throw new Error(`Missing package directory: packages/${name}`);
+    const manifest = json(path);
+    if (manifest.name !== name) throw new Error(`Package identity mismatch: expected ${name}, found ${manifest.name}.`);
+    const repository = String(manifest.repository?.url || "");
+    if (!repository.includes("tszmzz1026/dsh-epindel-boot-animation")) throw new Error(`${name} lost its original repository metadata; refusing to install an unverified package.`);
+    return manifest;
+}
+
+function foreign_dependency(manifest, state, name) {
+    const spec = manifest.dependencies?.[name];
+    if (!spec || state?.installed?.[name]) return null;
+    if (/^(?:link:|file:|https?:|git|github:|\/|[A-Za-z]:|\.{1,2}\/)/.test(spec)) return null;
+    return spec;
 }
 
 function stage_runtime(source, destination, packages) {
@@ -115,7 +147,7 @@ function stage_runtime(source, destination, packages) {
         mkdirSync(target, { recursive: true });
         for (const item of ["src", "lib", "package.json", "cordis.patch.yml", "README.md", "LICENSE"]) {
             const path = join(source, "packages", name, item);
-            if (existsSync(path)) cpSync(path, join(target, item), { recursive: true, dereference: false });
+            if (existsSync(path)) copy_tree(path, join(target, item));
         }
     }
 }
@@ -124,7 +156,7 @@ export async function install_suite(options = {}, dependencies = {}) {
     const source = dependencies.source || ROOT;
     const bundle = select_bundle(source, options.bundle);
     const packages = bundle.packages;
-    const manages_beauty = packages.includes("dsh-glass-theme");
+    const manages_beauty = packages.includes("dsh-glass-aurum");
     const runtime = dependencies.runtime || detect_environment(options);
     const execute = dependencies.execute || execute_cli;
     const manifest_path = join(runtime.profile_path, "package.json");
@@ -153,7 +185,7 @@ export async function install_suite(options = {}, dependencies = {}) {
             if (updated.dsh?.profile?.bundles && !previous.bundle) updated.dsh.profile.bundles = updated.dsh.profile.bundles.filter(item => item !== name);
             atomic_write(manifest_path, `${JSON.stringify(updated, null, 2)}\n`);
         }
-        if (manages_beauty && state.installed["dsh-glass-theme"]) {
+        if (manages_beauty && state.installed["dsh-glass-aurum"]) {
             const latest_patch = existsSync(patch_path) ? readFileSync(patch_path, "utf8") : "";
             atomic_write(patch_path, finish_patch_removal(latest_patch, state));
         }
@@ -169,20 +201,36 @@ export async function install_suite(options = {}, dependencies = {}) {
         await verify_suite();
     }
     const manifest = json(manifest_path);
+    for (const name of packages) verify_identity(source, name);
+    const conflicts = packages
+        .map(name => ({ name, spec: foreign_dependency(manifest, state, name) }))
+        .filter(item => item.spec);
+    if (conflicts.length) {
+        const list = conflicts.map(item => `${item.name}@${item.spec}`).join("、");
+        if (!options.replace_conflict) throw new Error(`Detected a same-name plugin from another source: ${list}. Remove it with "dsh plugin remove <name>" first, or re-run with --replace-conflict.`);
+        if (!options.check) {
+            for (const item of conflicts) {
+                await execute(runtime, "remove", item.name);
+                const updated = json(manifest_path);
+                if (updated.dsh?.profile?.bundles) updated.dsh.profile.bundles = updated.dsh.profile.bundles.filter(name => name !== item.name);
+                atomic_write(manifest_path, `${JSON.stringify(updated, null, 2)}\n`);
+            }
+        }
+    }
     if (options.check) return { changed: false, home: runtime.home, profile: runtime.profile, bundle: bundle.name, packages, message: "Runtime, assets and profile checks passed. No profile files were changed." };
     const stamp = `${new Date().toISOString().replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
     const backup = join(extension_root, "backups", `${runtime.profile}-${stamp}`);
     mkdirSync(backup, { recursive: true });
     for (const name of ["package.json", "cordis.patch.yml", "pnpm-lock.yaml"]) {
         const path = join(runtime.profile_path, name);
-        if (existsSync(path)) cpSync(path, join(backup, name));
+        if (existsSync(path)) copy_tree(path, join(backup, name));
     }
     const next = state && !state.uninstalled ? state : {
         previous: {},
         installed: {},
     };
     for (const name of packages) if (!Object.hasOwn(next.installed, name)) next.previous[name] = { spec: manifest.dependencies?.[name] || null, bundle: manifest.dsh?.profile?.bundles?.includes(name) || false, generation: manifest.dsh?.desktop?.generationProjection?.plugins?.[name]?.generationId || null };
-    if (manages_beauty && !next.installed["dsh-glass-theme"]) next.added_separator = Boolean(raw_patch && !raw_patch.endsWith("\n"));
+    if (manages_beauty && !next.installed["dsh-glass-aurum"]) next.added_separator = Boolean(raw_patch && !raw_patch.endsWith("\n"));
     const stage = join(extension_root, "versions", `${bundle.name}-${stamp}`);
     stage_runtime(source, stage, packages);
     next.backup = backup;

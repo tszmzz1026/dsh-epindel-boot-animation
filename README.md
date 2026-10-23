@@ -2,19 +2,30 @@
 
 [English](README.en.md) · [下载](https://github.com/tszmzz1026/dsh-epindel-boot-animation/releases/latest) · [插件市场源](marketplace/README.md)
 
-**纯代码界面美化 + 本地个人助理功能。
+**纯代码界面美化 + 本地个人助理功能。当前版本不包含游戏图片、角色、模型、动画、语音或音乐。**
 
 主题的背景、助手标记和装饰由 CSS 渐变与几何图形绘制；截图来自独立演示环境，仅包含示例数据。
 
 ![原创主题与效率中心](docs/overview.png)
 
+## 2.1.0 更新
+
+| 变更 | 说明 |
+| --- | --- |
+| 修复同名包被替换 | 主题包名由 `dsh-glass-theme` 改为唯一的 `dsh-glass-aurum`。市场上另一位作者（`cnayu`）也发布了同名包 `dsh-glass-theme@1.0.2`，市场升级会把本主题替换成那份代码，导致侧栏变蓝、输入不是金色、右上角「主题」消失。改用唯一包名后不再冲突；旧包名请先停用或卸载。 |
+| 安装器增加身份校验 | 安装前校验包名与仓库来源，发现同名但来源不同的依赖会直接报错，并提示用 `--replace-conflict` 移除后重装。 |
+| 新增图片 / 视频壁纸 | 「主题」面板新增「壁纸」区域：导入本地图片或视频做对话背景，支持浓度、模糊、填充方式、视频静音 / 音量 / 暂停。文件由宿主写入 `plugin-data/dsh-glass-aurum`，不占浏览器存储，清缓存也不会丢。 |
+| 复制逻辑加固 | 部分 Windows 上的 Node 递归 `fs.cpSync` 会崩溃，安装器改为显式逐层复制。 |
+
+「根据一张图片生成主题」不包含在本次发行中，留给你用自己的 DeepSeek Harness + API 实现；主题侧已留好接入位置，详见 [主题包说明](packages/dsh-glass-aurum/README.md#按图片生成主题)。
+
 ## 选择下载
 
 | 下载 | 包含内容 |
 | --- | --- |
-| [原创主题包](https://github.com/tszmzz1026/dsh-epindel-boot-animation/releases/download/suite-v2.0.0/dsh-beauty-v2.0.0.zip) | 金紫液态玻璃、金色输入、代码配色、卡片主页与阅读排版 |
-| [效率扩展包](https://github.com/tszmzz1026/dsh-epindel-boot-animation/releases/download/suite-v2.0.0/dsh-extensions-v2.0.0.zip) | 主聊旁聊、长期记忆、目标待办、今日计划、搜索、检查点、上下文、清理指令与 MD 总结 |
-| [完整无素材版](https://github.com/tszmzz1026/dsh-epindel-boot-animation/releases/download/suite-v2.0.0/dsh-full-v2.0.0.zip) | 原创主题 + 效率扩展 |
+| 原创主题包 `dsh-beauty-v2.1.0.zip` | 金紫液态玻璃、金色输入、代码配色、卡片主页、图片/视频壁纸与阅读排版 |
+| 效率扩展包 `dsh-extensions-v2.1.0.zip` | 主聊旁聊、长期记忆、目标待办、今日计划、搜索、检查点、上下文、清理指令与 MD 总结 |
+| 完整无素材版 `dsh-full-v2.1.0.zip` | 原创主题 + 效率扩展 |
 
 三个包均不含游戏素材。主题和扩展可以分别安装、叠加安装或分别卸载。推理滑块样式可美化已经安装的推理选择器；本包不分发其他作者的动画或推理插件。
 
@@ -36,6 +47,8 @@ node scripts/install-suite.mjs --bundle full
 
 `--bundle beauty` 只装原创主题，`--bundle extensions` 只装效率中心。可组合 `--uninstall`；自定义位置使用 `--desktop-exe`、`--home`、`--profile` 或 `--dsh-command`。安装前备份 profile 清单和补丁，不复制模型配置、密钥或对话记录，不自动重启 DSH。
 
+**同名包冲突**：如果 profile 里已经装了来自其他来源的同名插件，安装器会停下来并列出冲突项。确认要替换后再加 `--replace-conflict`，它会先移除冲突项再安装本项目版本。
+
 ## 功能预览
 
 | 长期记忆 | 目标待办 |
@@ -47,6 +60,15 @@ node scripts/install-suite.mjs --bundle full
 右上角「主题」支持自定义助手名称与本地头像上传，可拖动、缩放和裁切，并恢复默认头像。确认前可随时取消；上传的个人图片不会进入项目或公开发行包。
 
 ![主题设置与头像上传](docs/avatar-settings.png)
+
+### 壁纸
+
+「主题」面板的「壁纸」区域可以导入自己的图片或视频作为对话背景：
+
+- 图片支持 PNG / JPEG / WebP / AVIF / GIF / BMP，视频支持 MP4 / WebM / MOV / OGG，单文件上限 512 MB。
+- 浓度 0–100%、模糊 0–24 px、填充方式可选铺满裁切或完整显示。
+- 视频支持静音开关、音量、暂停 / 播放与循环；系统开启「减少动态效果」时不自动播放。
+- 文件保存在 `DSH_HOME/plugin-data/dsh-glass-aurum/`，通过同源路由读取，支持视频 Range 拖动，清浏览器缓存不会丢。
 
 记忆和计划由当前模型通过真实工具保存，读取或口头回复不等于写入。面板分别显示保存成功、失败或被拒绝，可手动补整理。自动整理不会把每句话都变为记忆，模型功能使用安装者自己的 API。数据保存在 `DSH_HOME/plugin-data/dsh-productivity`，没有账号或跨设备同步。
 

@@ -6,7 +6,7 @@
     },
     "plugins": [
         {
-            "name": "dsh-glass-theme",
+            "name": "dsh-glass-aurum",
             "title": {
                 "en": "DSH Theme",
                 "zh": "DSH 主题"
@@ -14,17 +14,17 @@
             "author": "tszmzz1026",
             "repository": {
                 "url": "https://github.com/tszmzz1026/dsh-epindel-boot-animation",
-                "directory": "packages/dsh-glass-theme"
+                "directory": "packages/dsh-glass-aurum"
             },
             "versions": [
                 {
-                    "version": "1.0.0",
+                    "version": "1.1.0",
                     "publishTimestamp": 1792588905,
                     "source": {
                         "type": "git",
                         "url": "https://github.com/tszmzz1026/dsh-epindel-boot-animation",
                         "commit": "ccc9c5c2417d5b449f56fc4448e7105da3fa451c",
-                        "path": "packages/dsh-glass-theme"
+                        "path": "packages/dsh-glass-aurum"
                     }
                 }
             ]

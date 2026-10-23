@@ -1,13 +1,13 @@
 {
     "name": "dsh-glass-productivity-suite",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "private": true,
     "description": "原创 CSS 主题与 DSH 效率扩展，不包含游戏图片、角色、动画、语音或音乐。",
     "license": "MIT",
     "type": "module",
     "engines": { "node": "^22.19.0 || >=24.0.0" },
     "scripts": {
-        "build": "node packages/dsh-glass-theme/scripts/build.mjs && node packages/dsh-productivity/scripts/build.mjs",
+        "build": "node packages/dsh-glass-aurum/scripts/build.mjs && node packages/dsh-productivity/scripts/build.mjs",
         "setup": "node scripts/setup.mjs",
         "test": "node scripts/test-suite.mjs",
         "package": "node scripts/package-bundles.mjs"

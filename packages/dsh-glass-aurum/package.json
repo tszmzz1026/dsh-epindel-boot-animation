@@ -1,0 +1,57 @@
+{
+    "name": "dsh-glass-aurum",
+    "version": "1.1.0",
+    "description": "原创金紫液态玻璃主题：纯 CSS 渐变、金色输入、代码配色、助手标记、卡片主页，支持导入图片/视频壁纸与按图片生成配色，不包含游戏素材。",
+    "type": "module",
+    "main": "src/host.js",
+    "exports": {
+        ".": "./src/host.js",
+        "./client": "./lib/client.js",
+        "./cordis.patch.yml": "./cordis.patch.yml",
+        "./package.json": "./package.json"
+    },
+    "files": [
+        "src",
+        "lib",
+        "cordis.patch.yml",
+        "README.md",
+        "LICENSE"
+    ],
+    "keywords": [
+        "dsh",
+        "deepseek-harness",
+        "theme",
+        "glassmorphism",
+        "wallpaper",
+        "image-palette"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/tszmzz1026/dsh-epindel-boot-animation.git",
+        "directory": "packages/dsh-glass-aurum"
+    },
+    "author": "tszmzz1026",
+    "homepage": "https://github.com/tszmzz1026/dsh-epindel-boot-animation#readme",
+    "bugs": {
+        "url": "https://github.com/tszmzz1026/dsh-epindel-boot-animation/issues"
+    },
+    "engines": {
+        "node": ">=22.19"
+    },
+    "dsh": {
+        "bundle": {
+            "patch": "./cordis.patch.yml"
+        },
+        "client": {
+            "platform": "web",
+            "inject": [
+                "@deepseek-ai/dsh-client-ui-theme"
+            ]
+        }
+    },
+    "scripts": {
+        "build": "node scripts/build.mjs",
+        "test": "node tests/avatar-browser.mjs"
+    },
+    "license": "MIT"
+}

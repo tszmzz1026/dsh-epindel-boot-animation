@@ -24,6 +24,28 @@ body[data-ds-dark-theme] #glass-ambient { background: #17151e; }
 .ep-video { opacity: 0; transition: opacity 1.2s ease; }
 [data-playing="true"] .ep-video { opacity: var(--ep-strength, .36); }
 [data-playing="true"] .ep-wallpaper { opacity: 0; }
+/* 用户导入的图片 / 视频壁纸：铺满窗口，模糊时向外扩张避免边缘露底 */
+#glass-ambient .ep-wallpaper-media {
+    position: absolute;
+    inset: calc(var(--ep-wallpaper-blur, 0px) * -2);
+    overflow: hidden;
+    opacity: var(--ep-wallpaper-opacity, .36);
+    filter: blur(var(--ep-wallpaper-blur, 0px));
+    transition: opacity .8s ease, filter .3s ease;
+}
+#glass-ambient .ep-wallpaper-media:empty { display: none; }
+#glass-ambient .ep-wallpaper-image,
+#glass-ambient .ep-wallpaper-video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+#glass-ambient[data-wallpaper="true"] .ep-wallpaper { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+    #glass-ambient .ep-wallpaper-media { transition: none; }
+}
 .ep-vignette {
     background: linear-gradient(90deg, #f3e9e1 0%, #f6f0eac9 24%, #f6f0ea85 52%, #f6f0ea18 85%),
         linear-gradient(0deg, #f5ede6f0 0%, transparent 40%, #f7f0e9b3 100%);
@@ -474,6 +496,19 @@ body[data-glass-custom-avatar="true"] .ep-character-avatar::before {
 .ep-avatar-actions button:disabled { opacity: .4; cursor: default; }
 .ep-avatar-status { width: 100%; margin: 0; font: 11px/1.6 "Microsoft YaHei", sans-serif; color: #e8c58b; }
 .ep-avatar-status:empty { display: none; }
+.ep-wallpaper-section { margin-bottom: 20px; }
+.ep-wallpaper-settings { margin-top: 12px; padding: 14px; border: 1px solid #dec49e22; border-radius: 12px; background: #ffffff04; }
+.ep-wallpaper-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ep-wallpaper-current strong { display: block; font-size: 12px; }
+.ep-wallpaper-current small { display: block; margin-top: 5px; font-size: 10px; color: #baa9b7; overflow-wrap: anywhere; }
+.ep-wallpaper-settings .ep-range-label { margin-top: 14px; }
+.ep-wallpaper-settings input[type="range"] { width: 100%; height: 4px; margin: 9px 0 2px; accent-color: #d6b37e; cursor: pointer; }
+.ep-wallpaper-fit { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; font-size: 12px; }
+.ep-wallpaper-fit select { border: 1px solid #dec49e33; border-radius: 8px; background: #2a2231; color: #f0d1a3; padding: 6px 10px; font: 12px/1.5 "Microsoft YaHei", sans-serif; cursor: pointer; }
+.ep-wallpaper-video { margin-top: 4px; padding-top: 4px; border-top: 1px dashed #dec49e22; }
+.ep-wallpaper-video[hidden] { display: none; }
+.ep-wallpaper-status { margin: 10px 0 0; font: 11px/1.6 "Microsoft YaHei", sans-serif; color: #e8c58b; }
+.ep-wallpaper-status:empty { display: none; }
 .ep-avatar-crop { width: min(390px, calc(100vw - 48px)); max-height: calc(100dvh - 48px); box-sizing: border-box; overflow: auto; padding: 26px; border: 1px solid #d4ae7460; border-radius: 20px; background: #211c2af5; color: #f4ece4; box-shadow: 0 30px 120px #0009; backdrop-filter: blur(24px); }
 .ep-avatar-crop::backdrop { background: #100c17b3; }
 .ep-avatar-crop h2 { font: 500 20px/1.5 "Microsoft YaHei", sans-serif; margin: 0; }

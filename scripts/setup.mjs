@@ -11,7 +11,7 @@ export function verify_assets() { return 0; }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
     ensure_runtime();
-    for (const name of ["dsh-glass-theme", "dsh-productivity"]) {
+    for (const name of ["dsh-glass-aurum", "dsh-productivity"]) {
         if (existsSync(new URL(`../packages/${name}/scripts/build.mjs`, import.meta.url))) await import(`../packages/${name}/scripts/build.mjs`);
     }
     const { verify_suite } = await import("./verify-suite.mjs");

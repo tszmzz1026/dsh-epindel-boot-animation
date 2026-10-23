@@ -1,5 +1,5 @@
 const STYLE_TEXT = "";
-const PACKAGE_ID = "dsh-glass-theme";
+const PACKAGE_ID = "dsh-glass-aurum";
 const STORAGE_KEY = "dsh.glass-theme.v1";
 const DEFAULT_SETTINGS = Object.freeze({
     enabled: true,
@@ -15,6 +15,12 @@ const DEFAULT_SETTINGS = Object.freeze({
     polished_sidebar: true,
     fate_home: true,
     assistant_name: "DSH 助手",
+    wallpaper_opacity: 36,
+    wallpaper_blur: 0,
+    wallpaper_fit: "cover",
+    wallpaper_muted: true,
+    wallpaper_volume: 60,
+    wallpaper_playing: true,
 });
 const PALETTES = {
     champagne: { name: "金辉 · 流光", light: "#91682f", dark: "#e8c58b", rgb: "232, 197, 139", ink: "#211c26" },
@@ -27,12 +33,16 @@ function read_settings() {
         const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
         const settings = { ...DEFAULT_SETTINGS };
         if (!value || typeof value !== "object") return settings;
-        for (const key of ["enabled", "dynamic", "focus", "ornaments", "gpt_slider", "liquid_glass", "reply_identity", "gold_code", "polished_sidebar", "fate_home"]) {
+        for (const key of ["enabled", "dynamic", "focus", "ornaments", "gpt_slider", "liquid_glass", "reply_identity", "gold_code", "polished_sidebar", "fate_home", "wallpaper_muted", "wallpaper_playing"]) {
             if (typeof value[key] === "boolean") settings[key] = value[key];
         }
         if (Object.hasOwn(PALETTES, value.palette)) settings.palette = value.palette;
         if (Number.isFinite(value.strength)) settings.strength = Math.max(0, Math.min(65, value.strength));
         if (typeof value.assistant_name === "string") settings.assistant_name = value.assistant_name.slice(0, 40);
+        if (Number.isFinite(value.wallpaper_opacity)) settings.wallpaper_opacity = Math.max(0, Math.min(100, value.wallpaper_opacity));
+        if (Number.isFinite(value.wallpaper_blur)) settings.wallpaper_blur = Math.max(0, Math.min(24, value.wallpaper_blur));
+        if (value.wallpaper_fit === "contain" || value.wallpaper_fit === "cover") settings.wallpaper_fit = value.wallpaper_fit;
+        if (Number.isFinite(value.wallpaper_volume)) settings.wallpaper_volume = Math.max(0, Math.min(100, value.wallpaper_volume));
         return settings;
     } catch (error) {
         if (error instanceof SyntaxError || error instanceof DOMException) return { ...DEFAULT_SETTINGS };
@@ -106,7 +116,7 @@ function create_ui() {
             <div class="ep-panel-content">
                 <p class="ep-eyebrow">A LITTLE MAGIC, EVERY DAY</p>
                 <h2 id="ep-panel-title">让灵感，悄然盛放。</h2>
-                <p class="ep-panel-intro">把花束、星牌与一抹金辉，留在每一次对话里。</p>
+                <p class="ep-panel-intro">把花束、星牌与一抹金辉，留在每一次对话里；也可以换成自己的图片或视频壁纸。</p>
                 <section class="ep-avatar-settings" aria-label="助手头像设置">
                     <span class="ep-character-avatar" role="img" aria-label="当前助手头像"></span>
                     <div><strong>助手头像</strong><small>本机保存，用于主页与助手回复</small></div>
@@ -115,6 +125,7 @@ function create_ui() {
                     <input class="ep-avatar-file" type="file" accept="image/png,image/jpeg,image/webp" aria-label="选择头像图片" hidden>
                     <p class="ep-avatar-status" role="status" aria-live="polite"></p>
                 </section>
+                <section class="ep-wallpaper-section" aria-label="壁纸设置"></section>
                 <div class="ep-section-title">主题色调 <span>跟随 DSH 深浅模式</span></div>
                 <div class="ep-palettes" role="group" aria-label="主题色调">
                     <button type="button" data-palette="champagne" aria-pressed="false"><i></i>金辉 · 流光</button>
@@ -327,6 +338,11 @@ function mount_theme(ctx, theme) {
     const world_enhancements = create_world_enhancements(ctx);
     const release_avatar = create_avatar_editor(root);
     let settings = read_settings();
+    const wallpaper = create_wallpaper(ambient);
+    wallpaper.bind_panel(root.querySelector(".ep-wallpaper-section"), (patch) => {
+        Object.assign(settings, patch);
+        persist(false);
+    });
     let release_tokens = null;
     let disposed = false;
     let media_revision = 0;
@@ -366,6 +382,7 @@ function mount_theme(ctx, theme) {
         root.dataset.enabled = String(settings.enabled);
         effort_adapter.set_enabled(settings.gpt_slider);
         world_enhancements.set_state(settings);
+        wallpaper.set_state(settings);
         sync_controls();
         sync_media();
     }
@@ -432,12 +449,12 @@ function mount_theme(ctx, theme) {
         const React = require("react");
         owner.effect(() => slots.inject("settings.general.item", () => slots.register({
             name: "settings.general.item",
-            id: "glass-theme",
+            id: "glass-aurum-theme",
             order: 12,
         }, () => React.createElement("div", { className: "ep-settings-row" },
             React.createElement("div", null,
                 React.createElement("strong", null, "DSH 助手 · 主题"),
-                React.createElement("small", null, "配色、玻璃与专注模式")),
+                React.createElement("small", null, "配色、玻璃、壁纸与专注模式")),
             React.createElement("button", { type: "button", onClick: open_panel }, "自定义 ✧")))));
     });
 
@@ -448,6 +465,7 @@ function mount_theme(ctx, theme) {
         release_glass_lighting();
         world_enhancements.dispose();
         release_avatar();
+        wallpaper.dispose();
         release_tokens?.();
         root.removeEventListener("click", on_click);
         root.removeEventListener("input", on_input);
