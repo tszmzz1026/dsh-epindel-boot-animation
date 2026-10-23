@@ -18,6 +18,16 @@
             },
             "versions": [
                 {
+                    "version": "1.1.1",
+                    "publishTimestamp": 1792754729,
+                    "source": {
+                        "type": "git",
+                        "url": "https://github.com/tszmzz1026/dsh-epindel-boot-animation",
+                        "commit": "81af010a5f4b7f5501034a75ac2d61a5e267b842",
+                        "path": "packages/dsh-glass-aurum"
+                    }
+                },
+                {
                     "version": "1.1.0",
                     "publishTimestamp": 1792588905,
                     "source": {
